@@ -1,0 +1,3 @@
+[submodule "external/mi_toolbox"]
+	path = external/mi_toolbox
+	url = git@github.com:lmjantsch/mi_toolbox.git
