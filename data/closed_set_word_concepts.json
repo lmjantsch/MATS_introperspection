@@ -1,0 +1,124 @@
+[
+  {
+    "category": "chess pieces",
+    "prompt_template": "Tell me about the {word} chess piece.",
+    "items": [
+      "king",
+      "queen",
+      "rook",
+      "bishop",
+      "knight",
+      "pawn"
+    ]
+  },
+  {
+    "category": "playing card suits",
+    "prompt_template": "Tell me about the {word} suit in a deck of cards.",
+    "items": [
+      "hearts",
+      "diamonds",
+      "clubs",
+      "spades"
+    ]
+  },
+  {
+    "category": "seasons",
+    "prompt_template": "Tell me about the season of {word}.",
+    "items": [
+      "spring",
+      "summer",
+      "autumn",
+      "winter"
+    ]
+  },
+  {
+    "category": "weekdays",
+    "prompt_template": "Tell me about the weekday {word}.",
+    "items": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ]
+  },
+  {
+    "category": "zodiac signs",
+    "prompt_template": "Tell me about the zodiac sign {word}.",
+    "items": [
+      "Aries",
+      "Taurus",
+      "Gemini",
+      "Cancer",
+      "Leo",
+      "Virgo",
+      "Libra",
+      "Scorpio",
+      "Sagittarius",
+      "Capricorn",
+      "Aquarius",
+      "Pisces"
+    ]
+  },
+  {
+    "category": "continents",
+    "prompt_template": "Tell me about the continent of {word}.",
+    "items": [
+      "Asia",
+      "Africa",
+      "North America",
+      "South America",
+      "Antarctica",
+      "Europe",
+      "Australia"
+    ]
+  },
+  {
+    "category": "oceans",
+    "prompt_template": "Tell me about the {word}.",
+    "items": [
+      "Pacific Ocean",
+      "Atlantic Ocean",
+      "Indian Ocean",
+      "Southern Ocean",
+      "Arctic Ocean"
+    ]
+  },
+  {
+    "category": "planets",
+    "prompt_template": "Tell me about the planet {word}.",
+    "items": [
+      "Mercury",
+      "Venus",
+      "Earth",
+      "Mars",
+      "Jupiter",
+      "Saturn",
+      "Uranus",
+      "Neptune"
+    ]
+  },
+  {
+    "category": "senses",
+    "prompt_template": "Tell me about the sense of {word}.",
+    "items": [
+      "sight",
+      "hearing",
+      "taste",
+      "smell",
+      "touch"
+    ]
+  },
+  {
+    "category": "arithmetic operations",
+    "prompt_template": "Tell me about the arithmetic operation of {word}.",
+    "items": [
+      "addition",
+      "subtraction",
+      "multiplication",
+      "division"
+    ]
+  }
+]
