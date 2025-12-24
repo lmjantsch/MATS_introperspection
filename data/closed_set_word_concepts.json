@@ -1,6 +1,6 @@
 [
   {
-    "category": "chess pieces",
+    "category": "chess piece",
     "prompt_template": "Tell me about the {word} chess piece.",
     "items": [
       "king",
@@ -12,7 +12,7 @@
     ]
   },
   {
-    "category": "playing card suits",
+    "category": "playing card suit",
     "prompt_template": "Tell me about the {word} suit in a deck of cards.",
     "items": [
       "hearts",
@@ -22,7 +22,7 @@
     ]
   },
   {
-    "category": "seasons",
+    "category": "season",
     "prompt_template": "Tell me about the season of {word}.",
     "items": [
       "spring",
@@ -32,7 +32,7 @@
     ]
   },
   {
-    "category": "weekdays",
+    "category": "weekday",
     "prompt_template": "Tell me about the weekday {word}.",
     "items": [
       "Monday",
@@ -45,7 +45,7 @@
     ]
   },
   {
-    "category": "zodiac signs",
+    "category": "zodiac sign",
     "prompt_template": "Tell me about the zodiac sign {word}.",
     "items": [
       "Aries",
@@ -63,7 +63,7 @@
     ]
   },
   {
-    "category": "continents",
+    "category": "continent",
     "prompt_template": "Tell me about the continent of {word}.",
     "items": [
       "Asia",
@@ -76,7 +76,7 @@
     ]
   },
   {
-    "category": "oceans",
+    "category": "ocean",
     "prompt_template": "Tell me about the {word}.",
     "items": [
       "Pacific Ocean",
@@ -87,7 +87,7 @@
     ]
   },
   {
-    "category": "planets",
+    "category": "planet",
     "prompt_template": "Tell me about the planet {word}.",
     "items": [
       "Mercury",
@@ -101,7 +101,7 @@
     ]
   },
   {
-    "category": "senses",
+    "category": "sense",
     "prompt_template": "Tell me about the sense of {word}.",
     "items": [
       "sight",
@@ -112,7 +112,7 @@
     ]
   },
   {
-    "category": "arithmetic operations",
+    "category": "arithmetic operation",
     "prompt_template": "Tell me about the arithmetic operation of {word}.",
     "items": [
       "addition",

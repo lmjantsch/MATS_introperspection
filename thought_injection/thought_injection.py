@@ -1,6 +1,7 @@
 import os
 import sys
-os.environ["CUDA_VISIBLE_DEVICES"] = "1,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 import json
@@ -8,42 +9,54 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from collections import defaultdict
 import argparse
+import asyncio
 
-from mi_toolbox.utils.collate import TokenizeCollator
+from dotenv import load_dotenv
+load_dotenv()
 
-module_path = os.path.abspath(os.path.join('.'))
+
+module_path = os.path.abspath(os.path.join('..'))
 if module_path not in sys.path:
     sys.path.append(module_path)
 
-from local_llm_judge import LocalLLMJudge, INJECTION_EVALUATION_TEMPLATE
+from utils import TokenizeCollator
+from local_llm_judge import AsyncLLMJudge, INJECTION_EVALUATION_TEMPLATE
 
-LOACL_JUDGE_URL = "http://localhost:11434/api/generate"
-LOACL_JUDGE_MODEL = "qwen3:14b"
+LOACL_JUDGE_URL = os.environ['LOACL_JUDGE_URL']
+LOACL_JUDGE_MODEL = os.environ['LOACL_JUDGE_MODEL']
 
 
-def main(args):
+async def main():
+    args = parse_arguments()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_id)
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id  
     tokenizer.padding_side = 'left'
 
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",    
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_use_double_quant=True,   
-    )
+    if args.model_id == 'meta-llama/Llama-3.3-70B-Instruct':
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",    
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_use_double_quant=True,   
+        )
 
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model_id,
-        quantization_config=bnb_config,
-        # dtype=torch.bfloat16,
-        device_map="auto",
-        trust_remote_code=True,
-    )
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model_id,
+            quantization_config=bnb_config,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model_id,
+            dtype=torch.bfloat16,
+            device_map="auto",
+            trust_remote_code=True,
+        )
 
-    with open("./data/word_concept_extraction.json", 'r') as f:
+    with open("../data/word_concept_extraction.json", 'r') as f:
         data = json.load(f)
 
     baseline_chats = [
@@ -58,7 +71,7 @@ def main(args):
     num_baseline_samples = len(baseline_chats)
     prompts = tokenizer.apply_chat_template(baseline_chats + target_chats, tokenize=False, add_generation_prompt=True)
 
-    concept_cachin_bs = 2
+    concept_cachin_bs = 1
     collate_fn = TokenizeCollator(tokenizer=tokenizer)
     dl = DataLoader([{'prompts': prompt} for prompt in prompts], batch_size=concept_cachin_bs, collate_fn=collate_fn, shuffle=False)
 
@@ -94,7 +107,7 @@ def main(args):
     char_idx = prompt.rfind('\n\nTrial 1:')
     injection_start = next(i for i, (start, _next) in enumerate(inputs['offset_mapping'][0]) if start <= char_idx and _next > char_idx)
 
-    concept_injection_bs = 2
+    concept_injection_bs = 1
     concept_injection_tasks = [{'prompts': prompt, 'concept_vectors': vector} for vector in concept_vectors[f"layer.{args.steering_layer}"]]
     collate_fn = TokenizeCollator(tokenizer=tokenizer)
     dl = DataLoader(concept_injection_tasks, batch_size=concept_injection_bs, collate_fn=collate_fn, shuffle=False)
@@ -154,15 +167,15 @@ def main(args):
             )
         )
 
-    judge = LocalLLMJudge(LOACL_JUDGE_URL, LOACL_JUDGE_MODEL)
-    judgements = judge(cases)
+    judge = AsyncLLMJudge(LOACL_JUDGE_URL, LOACL_JUDGE_MODEL)
+    judgements = await judge(cases)
 
     verdicts = [judgement['verdict'] for judgement in judgements]
     yes_answers = [i for i, verdict in enumerate(verdicts) if verdict == 'YES']
     no_answers = [i for i, verdict in enumerate(verdicts) if verdict == 'NO']
     errors = [i for i, verdict in enumerate(verdicts) if verdict.startswith('ERROR')]
 
-    accuracy = len(yes_answers) / (len(yes_answers) + len(no_answers))
+    accuracy = len(yes_answers) / (len(yes_answers) + len(no_answers) + 1e-7)
 
     print(f"""Result of injection Experiment:
         Overall Accuracy: {accuracy}
@@ -175,7 +188,7 @@ def main(args):
             {"\n\t".join([f"{full_answers[i]['word']}: {full_answers[i]['answer']}" for i in yes_answers]) if yes_answers else 'No cases of introperspection.'}
             
         Error Cases:
-            {"\n".join([judgements[i]['full_response'] for i in errors]) if errors else 'No errors occured.'}
+            {"\n".join([str(judgements[i]['full_response']) for i in errors]) if errors else 'No errors occured.'}
     """)
 
     save_state = {
@@ -188,7 +201,7 @@ def main(args):
         "answers": full_answers,
         "judgements": judgements
     }
-    with open(f"./data/results/thought_injection/{args.model_id.replace('/', '_')}_{args.steering_layer}_{args.steering_magnitude}.json", 'w') as f:
+    with open(f"../data/results/thought_injection/{args.model_id.replace('/', '_') + '-fp16'}_{args.steering_layer}_{args.steering_magnitude}.json", 'w') as f:
         json.dump(save_state, f)
 
 def parse_arguments():
@@ -200,5 +213,4 @@ def parse_arguments():
     return args
 
 if __name__ == '__main__':
-    args = parse_arguments()
-    main(args)
+    asyncio.run(main())

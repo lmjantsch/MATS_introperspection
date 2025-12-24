@@ -4,67 +4,74 @@ import sys
 from tqdm import tqdm
 from typing import List, Dict
 
-class LocalLLMJudge:
+import asyncio
+from typing import List, Dict
+from tqdm.asyncio import tqdm_asyncio
+from openai import AsyncOpenAI, APIConnectionError, APIError
+
+class AsyncLLMJudge:
 
     def __init__(self, url: str, model: str):
-        self.url = url
+        self.client = AsyncOpenAI(
+            base_url=url, 
+            api_key="EMPTY" # Api Key set to empty string as requested
+        )
         self.model = model
 
-    def __call__(self, prompts: List[str], answer_options: List[str] = ['YES', 'NO']) -> List[Dict[str, str]]:
-        responses = []
-
-        for prompt in tqdm(prompts):
-            response = self._generate_text(prompt)
-            
-            verdict = self._get_verdict(response, answer_options)
-            responses.append({
-                "full_response": response,
-                "verdict": verdict
-            })
+    async def __call__(self, prompts: List[str], answer_options: List[str] = ['YES', 'NO']) -> List[Dict[str, str]]:
+        # Create a list of coroutines (tasks)
+        tasks = [self._process_single_prompt(prompt, answer_options) for prompt in prompts]
         
+        # Execute tasks concurrently with a progress bar
+        responses = await tqdm_asyncio.gather(*tasks)
         return responses
+
+    async def _process_single_prompt(self, prompt: str, answer_options: List[str]) -> Dict[str, str]:
+        """Helper method to process a single prompt and format the result."""
+        response_text = await self._generate_text(prompt)
+        verdict = self._get_verdict(response_text, answer_options)
+        
+        return {
+            "full_response": response_text,
+            "verdict": verdict
+        }
     
     def _get_verdict(self, response: str, answer_options: List[str]) -> str:
+        # Same logic as original
+        if not response:
+            return "ERROR: No response"
+            
         verdict = response.split()[-1]
         
-        if verdict not in answer_options:
-            verdict = f"ERROR: {verdict}"
-
-        return verdict
-    
-    def _generate_text(self, prompt: str) -> str:
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "num_predict": 500
-            }
-        }
+        # Strip potential punctuation if the model adds a period (common in chat models)
+        clean_verdict = verdict.strip(".,!?")
         
+        if clean_verdict in answer_options:
+            return clean_verdict
+        elif verdict in answer_options:
+            return verdict
+        else:
+            return f"ERROR: {verdict}"
+
+    async def _generate_text(self, prompt: str) -> str:
         try:
-            response = requests.post(self.url, json=payload)
-            response.raise_for_status() # Check for HTTP errors
-            data = response.json()
-
-            response = self._extract_response(data)
-            return response
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=2000 # Equivalent to num_predict
+            )
+            reasoning = response.choices[0].message.reasoning
+            answer = response.choices[0].message.content
+            return f"{reasoning}\n\n{answer}"
         
-        except requests.exceptions.ConnectionError:
-            return "❌ Error: Could not connect. Is your SSH tunnel running?"
-        except requests.exceptions.RequestException as e:
-            return f"❌ Error connecting to Ollama: {e}"
-
-    def _extract_response(self, response_data: dict) -> str:
-
-        if not 'thinking' in response_data and not response_data['thinking']:
-            return response_data.get("response", "No response text found.")
-            
-        thinking = response_data.get("thinking", "No thinking text found.")
-        response = response_data.get("response", "No response text found.")
-        return f"{thinking}\n\n{response}"
-    
-
+        except APIConnectionError:
+            return "❌ Error: Could not connect. Is the server/SSH tunnel running?"
+        except APIError as e:
+            return f"❌ Error from API: {e}"
+        except Exception as e:
+            return f"❌ Unexpected Error: {e}"
 
 
 INJECTION_EVALUATION_TEMPLATE = """An AI assistant was asked the question below.
